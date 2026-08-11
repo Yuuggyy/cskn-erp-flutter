@@ -1,19 +1,40 @@
 // Compiles a dart2wasm-generated main module from `source` which can then
-// be instantiatable via the `instantiate` method.
+// instantiatable via the `instantiate` method.
 //
 // `source` needs to be a `Response` object (or promise thereof) e.g. created
 // via the `fetch()` JS API.
-
 export async function compileStreaming(source) {
+  const builtins = {builtins: ['js-string']};
   return new CompiledApp(
-      await WebAssembly.compileStreaming(source));
+      await WebAssembly.compileStreaming(source, builtins), builtins);
 }
 
 // Compiles a dart2wasm-generated wasm modules from `bytes` which is then
 // instantiatable via the `instantiate` method.
 export async function compile(bytes) {
-  return new CompiledApp(await WebAssembly.compile(bytes));
+  const builtins = {builtins: ['js-string']};
+  return new CompiledApp(await WebAssembly.compile(bytes, builtins), builtins);
 }
+
+// DEPRECATED: Please use `compile` or `compileStreaming` to get a compiled app,
+// use `instantiate` method to get an instantiated app and then call
+// `invokeMain` to invoke the main function.
+export async function instantiate(modulePromise, importObjectPromise) {
+  var moduleOrCompiledApp = await modulePromise;
+  if (!(moduleOrCompiledApp instanceof CompiledApp)) {
+    moduleOrCompiledApp = new CompiledApp(moduleOrCompiledApp);
+  }
+  const instantiatedApp = await moduleOrCompiledApp.instantiate(await importObjectPromise);
+  return instantiatedApp.instantiatedModule;
+}
+
+// DEPRECATED: Please use `compile` or `compileStreaming` to get a compiled app,
+// use `instantiate` method to get an instantiated app and then call
+// `invokeMain` to invoke the main function.
+export const invoke = (moduleInstance, ...args) => {
+  moduleInstance.exports.$invokeMain(args);
+}
+
 class CompiledApp {
   constructor(module, builtins) {
     this.module = module;
