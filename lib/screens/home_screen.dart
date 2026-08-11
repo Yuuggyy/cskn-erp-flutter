@@ -16,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late List<NavItem> _navItems;
   int _currentIndex = 0;
+  int _refreshKey = 0;
 
   @override
   void initState() {
@@ -28,6 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.pop(context); // Close drawer
   }
 
+  void _refresh() {
+    setState(() {
+      _refreshKey++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentItem = _navItems[_currentIndex];
@@ -36,9 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Widget currentScreen;
     if (currentItem.id == 'dashboard') {
-      currentScreen = DashboardScreen(profile: widget.profile);
+      currentScreen = DashboardScreen(profile: widget.profile, key: ValueKey('dashboard_$_refreshKey'));
     } else {
       currentScreen = DataTableScreen(
+        key: ValueKey('${currentItem.id}_$_refreshKey'),
         navItem: currentItem,
         canWrite: canWrite,
       );
@@ -50,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() {}),
+            onPressed: _refresh,
           ),
         ],
       ),
@@ -94,31 +102,22 @@ class _HomeScreenState extends State<HomeScreen> {
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
+              title: const Text('Deconnexion', style: TextStyle(color: Colors.red)),
               onTap: () async {
                 await AuthService.signOut();
-                if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    '/',
-                    (route) => false,
-                  );
-                }
+                // AuthGate listens to onAuthStateChange and will
+                // automatically show the login screen.
               },
             ),
           ],
         ),
       ),
-      body: KeyedSubtree(
-        key: ValueKey('${currentItem.id}_${DateTime.now().millisecondsSinceEpoch}'),
-        child: currentScreen,
-      ),
+      body: currentScreen,
       floatingActionButton: (canWrite && currentItem.id != 'dashboard')
           ? FloatingActionButton(
               onPressed: () {
-                // TODO: Add record
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ajout - bientôt disponible')),
+                  const SnackBar(content: Text('Ajout - bientot disponible')),
                 );
               },
               child: const Icon(Icons.add),
