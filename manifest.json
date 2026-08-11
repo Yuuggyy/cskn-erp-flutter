@@ -1,0 +1,9 @@
+{
+  "name": "CSKN ERP",
+  "short_name": "CSKN",
+  "start_url": "/cskn-flutter/",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#4CAF50",
+  "orientation": "portrait-primary"
+}
