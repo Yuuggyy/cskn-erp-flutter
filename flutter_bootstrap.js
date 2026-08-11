@@ -12,11 +12,13 @@
   };
 
   _flutter.loader.load({
+    config: {
+      canvasKitBaseUrl: "canvaskit/",
+      useLocalCanvasKit: true
+    },
     onEntrypointLoaded: async function(engineInitializer) {
       let appRunner = await engineInitializer.initializeEngine({
-        assetBase: "",
-        renderer: "canvaskit",
-        canvasKitBaseUrl: "canvaskit/"
+        assetBase: ""
       });
       await appRunner.runApp();
     }
