@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/cskn-erp-flutter/">
+  <meta charset="UTF-8">
+  <title>CK Test 4</title>
+  <style>
+    body { margin: 0; padding: 10px; background: #0a0e14; color: #fff; font-family: monospace; font-size: 13px; }
+    .error { color: #ff5252; }
+    .info { color: #4CAF50; }
+    .warn { color: #ffc107; }
+  </style>
+</head>
+<body>
+  <div id="log"></div>
+  <script type="module">
+    const logEl = document.getElementById('log');
+    function log(msg, type) {
+      const div = document.createElement('div');
+      div.className = type || 'info';
+      div.textContent = new Date().toISOString().substr(11,8) + ' ' + msg;
+      logEl.appendChild(div);
+    }
+    window.addEventListener('unhandledrejection', e => {
+      log('REJECTION: ' + e.reason, 'error');
+    });
+    window.onerror = (msg, url, line, col, err) => {
+      log('ERROR: ' + msg + ' at line ' + line, 'error');
+      if (err && err.stack) log(err.stack, 'error');
+      return false;
+    };
+
+    const baseUrl = new URL('canvaskit/chromium/', document.baseURI).toString();
+    log('Base: ' + baseUrl);
+
+    try {
+      // Import canvaskit.js
+      const mod = await import(baseUrl + 'canvaskit.js');
+      log('Import OK, default=' + typeof mod.default);
+
+      // Fetch wasm as arrayBuffer (not streaming)
+      log('Fetching wasm as buffer...');
+      const resp = await fetch(baseUrl + 'canvaskit.wasm');
+      log('Fetch status: ' + resp.status);
+      const buffer = await resp.arrayBuffer();
+      log('Buffer size: ' + buffer.byteLength);
+
+      // Compile with WebAssembly.compile (not streaming)
+      log('Compiling wasm (non-streaming)...');
+      const wasmModule = await WebAssembly.compile(buffer);
+      log('Wasm compiled!', 'info');
+
+      // Initialize CanvasKit
+      log('Initializing CanvasKit...');
+      const ck = await mod.default({
+        instantiateWasm: (info, receiveInstance) => {
+          log('instantiateWasm called');
+          WebAssembly.instantiate(wasmModule, info).then(instance => {
+            log('Instance created!', 'info');
+            receiveInstance(instance);
+          }).catch(e => {
+            log('Instantiate error: ' + e.message, 'error');
+          });
+        }
+      });
+      log('CanvasKit ready! type=' + typeof ck, 'info');
+      log('MakeCanvas=' + typeof ck.MakeCanvas, 'info');
+    } catch(e) {
+      log('FAILED: ' + e.message, 'error');
+      if (e.stack) log(e.stack, 'error');
+    }
+  </script>
+</body>
+</html>
