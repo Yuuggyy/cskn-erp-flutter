@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/cskn-erp-flutter/">
+  <meta charset="UTF-8">
+  <title>CSKN Diag</title>
+  <style>
+    body { margin: 0; padding: 10px; background: #0a0e14; color: #ccc; font-family: monospace; font-size: 12px; }
+    .err { color: #ff5252; }
+    .ok { color: #4CAF50; }
+    .warn { color: #ffc107; }
+    #log { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="log"></div>
+  <script type="module">
+    const logEl = document.getElementById('log');
+    function log(msg, type) {
+      const div = document.createElement('div');
+      if (type) div.className = type;
+      div.textContent = new Date().toISOString().substr(11,8) + ' ' + msg;
+      logEl.appendChild(div);
+    }
+    window.addEventListener('unhandledrejection', e => log('REJECTION: ' + e.reason, 'err'));
+    window.onerror = (msg, url, line, col, err) => {
+      log('ERROR: ' + msg + ' L' + line, 'err');
+      if (err?.stack) log(err.stack, 'err');
+    };
+
+    log('Start diagnostic...');
+    const base = document.baseURI;
+    log('Base: ' + base);
+
+    try {
+      // Step 1: Load flutter.js
+      log('Loading flutter.js...');
+      await import(base + 'flutter.js');
+      log('flutter.js loaded', 'ok');
+      log('_flutter: ' + typeof window._flutter);
+
+      // Step 2: Load main.dart.mjs
+      log('Importing main.dart.mjs...');
+      const mjs = await import(base + 'main.dart.mjs');
+      log('mjs loaded, compile=' + typeof mjs.compile, 'ok');
+
+      // Step 3: Fetch main.dart.wasm
+      log('Fetching main.dart.wasm...');
+      const wasmResp = await fetch(base + 'main.dart.wasm');
+      log('Wasm fetch: ' + wasmResp.status + ' size=' + wasmResp.headers.get('content-length'));
+      const wasmBuf = await wasmResp.arrayBuffer();
+      log('Wasm buffer: ' + wasmBuf.byteLength, 'ok');
+
+      // Step 4: Compile main wasm
+      log('Compiling main wasm (non-streaming)...');
+      const compiled = await mjs.compile(wasmBuf);
+      log('Main wasm compiled!', 'ok');
+
+      // Step 5: Load CanvasKit
+      log('Loading CanvasKit...');
+      const ckBase = new URL('canvaskit/chromium/', base).toString();
+      const ckMod = await import(ckBase + 'canvaskit.js');
+      log('CK module loaded, default=' + typeof ckMod.default, 'ok');
+
+      const ckWasmResp = await fetch(ckBase + 'canvaskit.wasm');
+      const ckWasmBuf = await ckWasmResp.arrayBuffer();
+      log('CK wasm buffer: ' + ckWasmBuf.byteLength);
+
+      const ckWasmModule = await WebAssembly.compile(ckWasmBuf);
+      log('CK wasm compiled', 'ok');
+
+      const ck = await ckMod.default({
+        instantiateWasm: (info, receive) => {
+          log('CK instantiateWasm called');
+          WebAssembly.instantiate(ckWasmModule, info).then(inst => {
+            log('CK instance created', 'ok');
+            receive(inst);
+          });
+        }
+      });
+      log('CanvasKit ready: ' + typeof ck, 'ok');
+      window._ck = ck;
+
+      // Step 6: Instantiate main app
+      log('Instantiating main app...');
+      const app = await compiled.instantiate({
+        skwasm: ck, // pass CanvasKit as renderer
+      });
+      log('App instantiated!', 'ok');
+
+      // Step 7: Run main
+      log('Calling invokeMain()...');
+      await app.invokeMain();
+      log('invokeMain completed!', 'ok');
+
+    } catch(e) {
+      log('FAILED: ' + e.message, 'err');
+      if (e.stack) log(e.stack, 'err');
+    }
+  </script>
+</body>
+</html>
