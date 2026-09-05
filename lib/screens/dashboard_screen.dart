@@ -112,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
-            childAspectRatio: 1.2,
+            childAspectRatio: MediaQuery.of(context).size.width > 900 ? 1.8 : 1.2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
             children: isAdmin ? _adminStatCards() : _agentStatCards(),
