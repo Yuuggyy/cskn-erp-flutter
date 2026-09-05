@@ -33,7 +33,7 @@ class CSKNApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
